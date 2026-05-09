@@ -1,0 +1,264 @@
+{
+  "name": "ssh-system-monitor",
+  "displayName": "SSH System Monitor",
+  "description": "Live CPU/GPU/memory/disk/network monitoring in the VSCode status bar when connected to a remote host (SSH, WSL, Dev Container).",
+  "version": "0.1.0",
+  "publisher": "local",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "ssh",
+    "remote",
+    "monitor",
+    "system",
+    "cpu",
+    "gpu",
+    "memory",
+    "disk",
+    "network",
+    "status bar"
+  ],
+  "main": "./out/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "sshMonitor.showDetails",
+        "title": "SSH Monitor: Show Details"
+      },
+      {
+        "command": "sshMonitor.refreshNow",
+        "title": "SSH Monitor: Refresh Now"
+      },
+      {
+        "command": "sshMonitor.toggleEnabled",
+        "title": "SSH Monitor: Toggle Enabled"
+      }
+    ],
+    "configuration": {
+      "title": "SSH System Monitor",
+      "properties": {
+        "sshMonitor.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Master switch. When false, no sampling occurs and no status bar items are shown."
+        },
+        "sshMonitor.intervalMs": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 500,
+          "maximum": 60000,
+          "description": "Sampling interval in milliseconds."
+        },
+        "sshMonitor.commandTimeoutMs": {
+          "type": "number",
+          "default": 1500,
+          "minimum": 200,
+          "maximum": 30000,
+          "description": "Per-command spawn timeout (ms) for shell-out collectors."
+        },
+        "sshMonitor.runOnLocal": {
+          "type": "boolean",
+          "default": false,
+          "description": "Also run when not connected to a remote host. By default the extension is idle in local windows."
+        },
+        "sshMonitor.statusBar.alignment": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right"
+          ],
+          "default": "right",
+          "description": "Status bar side."
+        },
+        "sshMonitor.statusBar.priorityBase": {
+          "type": "number",
+          "default": 100,
+          "description": "Priority for the first status bar item; subsequent items decrement from this value."
+        },
+        "sshMonitor.statusBar.order": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "cpu",
+              "memory",
+              "gpu",
+              "disk",
+              "network"
+            ]
+          },
+          "default": [
+            "cpu",
+            "memory",
+            "gpu",
+            "disk",
+            "network"
+          ],
+          "description": "Which metrics appear on the status bar, and in what order. Omit a metric to hide it."
+        },
+        "sshMonitor.statusBar.colorize": {
+          "type": "boolean",
+          "default": true,
+          "description": "Apply warning/error background colors based on threshold crossings."
+        },
+        "sshMonitor.statusBar.iconStyle": {
+          "type": "string",
+          "enum": [
+            "codicon",
+            "text",
+            "none"
+          ],
+          "default": "codicon",
+          "description": "How to label items: codicon glyph, short text label (CPU/MEM/...), or no prefix."
+        },
+        "sshMonitor.metrics.cpu.enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "sshMonitor.metrics.cpu.format": {
+          "type": "string",
+          "enum": [
+            "percent",
+            "load",
+            "both"
+          ],
+          "default": "percent",
+          "description": "Show busy %, 1-min load average, or both."
+        },
+        "sshMonitor.metrics.memory.enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "sshMonitor.metrics.memory.format": {
+          "type": "string",
+          "enum": [
+            "percent",
+            "used",
+            "both"
+          ],
+          "default": "both"
+        },
+        "sshMonitor.metrics.disk.enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "sshMonitor.metrics.disk.includePattern": {
+          "type": "string",
+          "default": "",
+          "description": "Regex; empty means all devices. Applied before excludePattern."
+        },
+        "sshMonitor.metrics.disk.excludePattern": {
+          "type": "string",
+          "default": "^(loop|ram|sr|fd|dm-)",
+          "description": "Regex of device names to skip."
+        },
+        "sshMonitor.metrics.disk.showSeparateRW": {
+          "type": "boolean",
+          "default": true,
+          "description": "Render read and write rates separately rather than summed."
+        },
+        "sshMonitor.metrics.network.enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "sshMonitor.metrics.network.includePattern": {
+          "type": "string",
+          "default": ""
+        },
+        "sshMonitor.metrics.network.excludePattern": {
+          "type": "string",
+          "default": "^(lo|docker|veth|br-|cni|utun|awdl|llw|anpi|ap1|bridge|gif|stf)"
+        },
+        "sshMonitor.metrics.gpu.enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "sshMonitor.metrics.gpu.vendors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "nvidia",
+              "amd",
+              "intel",
+              "apple"
+            ]
+          },
+          "default": [
+            "auto"
+          ],
+          "description": "Which GPU vendors to query. 'auto' detects available tools (nvidia-smi, rocm-smi, intel_gpu_top). Apple Silicon (powermetrics) requires sudo and must be enabled explicitly."
+        },
+        "sshMonitor.metrics.gpu.show": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "util",
+              "mem",
+              "temp",
+              "power"
+            ]
+          },
+          "default": [
+            "util",
+            "mem"
+          ],
+          "description": "Which GPU metrics to surface."
+        },
+        "sshMonitor.metrics.gpu.apple.sudoCommand": {
+          "type": "string",
+          "default": "",
+          "description": "Command prefix to obtain sudo for powermetrics, e.g. 'sudo -n'. Leave empty to skip Apple Silicon GPU sampling."
+        },
+        "sshMonitor.thresholds.cpu.warn": {
+          "type": "number",
+          "default": 70
+        },
+        "sshMonitor.thresholds.cpu.crit": {
+          "type": "number",
+          "default": 90
+        },
+        "sshMonitor.thresholds.memory.warn": {
+          "type": "number",
+          "default": 75
+        },
+        "sshMonitor.thresholds.memory.crit": {
+          "type": "number",
+          "default": 92
+        },
+        "sshMonitor.thresholds.gpu.warn": {
+          "type": "number",
+          "default": 70
+        },
+        "sshMonitor.thresholds.gpu.crit": {
+          "type": "number",
+          "default": 90
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -w -p .",
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}
