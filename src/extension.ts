@@ -125,4 +125,42 @@ function registerCommands(context: vscode.ExtensionContext, log: (msg: string) =
       vscode.window.showInformationMessage(`SSH Monitor: ${!cur ? "enabled" : "disabled"}`);
     }),
   );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("sshMonitor.openSettings", async () => {
+      await vscode.commands.executeCommand("workbench.action.openSettings", "sshMonitor");
+    }),
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("sshMonitor.manage", async () => {
+      const enabled = vscode.workspace.getConfiguration("sshMonitor").get<boolean>("enabled", true);
+      const picks: (vscode.QuickPickItem & { id: string })[] = [
+        { id: "details", label: "$(info) Show Details", description: "Open the latest snapshot in the Output panel" },
+        { id: "refresh", label: "$(sync) Refresh Now", description: "Force a fresh sample" },
+        { id: "settings", label: "$(gear) Open Settings", description: "Edit sshMonitor.* configuration" },
+        {
+          id: "toggle",
+          label: enabled ? "$(circle-slash) Disable" : "$(check) Enable",
+          description: enabled ? "Stop sampling" : "Start sampling",
+        },
+      ];
+      const choice = await vscode.window.showQuickPick(picks, {
+        placeHolder: "SSH System Monitor",
+      });
+      if (!choice) return;
+      switch (choice.id) {
+        case "details":
+          await vscode.commands.executeCommand("sshMonitor.showDetails");
+          break;
+        case "refresh":
+          await vscode.commands.executeCommand("sshMonitor.refreshNow");
+          break;
+        case "settings":
+          await vscode.commands.executeCommand("sshMonitor.openSettings");
+          break;
+        case "toggle":
+          await vscode.commands.executeCommand("sshMonitor.toggleEnabled");
+          break;
+      }
+    }),
+  );
 }

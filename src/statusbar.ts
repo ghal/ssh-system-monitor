@@ -1,10 +1,15 @@
 import * as vscode from "vscode";
 import type { Config, Thresholds } from "./config";
-import { humanBytes, humanRate, percent } from "./format";
+import { humanBytes, humanRate, pad, percent } from "./format";
 import { buildTooltip } from "./detail";
 import type { GpuSample, MetricKey, Snapshot } from "./collectors/types";
 
-const COMMAND_DETAILS = "sshMonitor.showDetails";
+const COMMAND_MANAGE = "sshMonitor.manage";
+
+const W_PCT = 4; // "100%"
+const W_LOAD = 5; // "99.99"
+const W_BYTES = 6; // "999.9G"
+const W_RATE = 8; // "999.9M/s"
 
 const ICONS: Record<MetricKey, string> = {
   cpu: "$(pulse)",
@@ -73,7 +78,7 @@ export class StatusBarManager implements vscode.Disposable {
     let priority = this.cfg.statusBar.priorityBase;
     for (const metric of order) {
       const item = vscode.window.createStatusBarItem(align, priority--);
-      item.command = COMMAND_DETAILS;
+      item.command = COMMAND_MANAGE;
       item.text = `${ICONS[metric]} —`;
       item.tooltip = `SSH Monitor: ${metric}`;
       item.show();
@@ -164,10 +169,10 @@ function labelPrefix(metric: MetricKey, style: Config["statusBar"]["iconStyle"])
 
 function formatCpu(snap: Snapshot, cfg: Config): string {
   const c = snap.cpu;
-  if (!c) return "—";
+  if (!c) return pad("—", W_PCT);
   const fmt = cfg.metrics.cpu.format;
-  const pct = percent(c.busyPct, 0);
-  const load = c.load1 !== undefined ? c.load1.toFixed(2) : "?";
+  const pct = percent(c.busyPct, 0, W_PCT);
+  const load = pad(c.load1 !== undefined ? c.load1.toFixed(2) : "?", W_LOAD);
   if (fmt === "percent") return pct;
   if (fmt === "load") return load;
   return `${pct} (${load})`;
@@ -175,10 +180,10 @@ function formatCpu(snap: Snapshot, cfg: Config): string {
 
 function formatMem(snap: Snapshot, cfg: Config): string {
   const m = snap.mem;
-  if (!m) return "—";
+  if (!m) return pad("—", W_PCT);
   const fmt = cfg.metrics.memory.format;
-  const pct = percent(m.usedPct, 0);
-  const used = `${humanBytes(m.usedBytes)}/${humanBytes(m.totalBytes)}`;
+  const pct = percent(m.usedPct, 0, W_PCT);
+  const used = `${humanBytes(m.usedBytes, 1, W_BYTES)}/${humanBytes(m.totalBytes, 1, W_BYTES)}`;
   if (fmt === "percent") return pct;
   if (fmt === "used") return used;
   return `${used} (${pct})`;
@@ -186,28 +191,28 @@ function formatMem(snap: Snapshot, cfg: Config): string {
 
 function formatDisk(snap: Snapshot, cfg: Config): string {
   const d = snap.disk;
-  if (!d) return "—";
+  if (!d) return pad("—", W_RATE);
   if (cfg.metrics.disk.showSeparateRW) {
-    return `R ${humanRate(d.totalReadBps, 0)} W ${humanRate(d.totalWriteBps, 0)}`;
+    return `R ${humanRate(d.totalReadBps, 1, W_RATE)} W ${humanRate(d.totalWriteBps, 1, W_RATE)}`;
   }
-  return humanRate(d.totalReadBps + d.totalWriteBps, 0);
+  return humanRate(d.totalReadBps + d.totalWriteBps, 1, W_RATE);
 }
 
 function formatNet(snap: Snapshot): string {
   const n = snap.net;
-  if (!n) return "—";
-  return `↓${humanRate(n.totalRxBps, 0)} ↑${humanRate(n.totalTxBps, 0)}`;
+  if (!n) return pad("—", W_RATE);
+  return `↓${humanRate(n.totalRxBps, 1, W_RATE)} ↑${humanRate(n.totalTxBps, 1, W_RATE)}`;
 }
 
 function formatGpu(snap: Snapshot): string {
   const g: GpuSample | undefined = snap.gpu;
-  if (!g || g.devices.length === 0) return "—";
+  if (!g || g.devices.length === 0) return pad("—", W_PCT);
   const utils = g.devices.map((d) => (d.utilPct !== undefined ? d.utilPct : null));
-  if (utils.every((u) => u === null)) return "—";
+  if (utils.every((u) => u === null)) return pad("—", W_PCT);
   if (utils.length <= 2) {
-    return utils.map((u) => (u === null ? "?" : percent(u, 0))).join("/");
+    return utils.map((u) => (u === null ? pad("?", W_PCT) : percent(u, 0, W_PCT))).join("/");
   }
   const valid = utils.filter((u): u is number => u !== null);
   const avg = valid.reduce((a, b) => a + b, 0) / Math.max(1, valid.length);
-  return `avg ${percent(avg, 0)}`;
+  return `avg ${percent(avg, 0, W_PCT)}`;
 }

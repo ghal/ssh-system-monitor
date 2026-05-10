@@ -43,6 +43,14 @@
       {
         "command": "sshMonitor.toggleEnabled",
         "title": "SSH Monitor: Toggle Enabled"
+      },
+      {
+        "command": "sshMonitor.openSettings",
+        "title": "SSH Monitor: Open Settings"
+      },
+      {
+        "command": "sshMonitor.manage",
+        "title": "SSH Monitor: Manage"
       }
     ],
     "configuration": {
