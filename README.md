@@ -3,6 +3,7 @@
 A VSCode extension that displays live system utilization in the bottom status bar **when you're connected to a remote host** (Remote-SSH, WSL, Dev Containers). Lightweight, fully configurable, no native dependencies.
 
 ## What it shows
+![Status bar: CPU, disk space, disk I/O, and network throughput](assets/image.png)
 
 Per-metric status bar items, each with a tooltip that breaks down per-device numbers:
 
